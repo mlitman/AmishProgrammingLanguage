@@ -62,6 +62,12 @@
      (extend-env-4-lambda-helper lovars lovals (empty-scope))
      env)))
 
+(define extend-env-4-let
+  (lambda (app-exp env)
+    (extend-env-4-lambda
+     (map (lambda (lst) (list-ref (list-ref lst 1) 1)) (cdr app-exp))
+     (map (lambda (exp) (eval-exp exp env)) (map (lambda (lst) (list-ref lst 2)) (cdr app-exp)))
+     env)))
 
 ;Constructors related to the LCE types
 (define lit-exp
@@ -154,7 +160,7 @@
           (trueExp (eval-exp (cadr appExp) env))
           (falseExp (eval-exp (caddr appExp) env)))
     (if boolExp trueExp falseExp))))
-         
+
     
 (define eval-exp
   (lambda (lce env)
@@ -183,6 +189,9 @@
          ((eq? (list-ref (list-ref lce 1) 0) 'if-exp)
           ;first element of app-exp is an if-exp
           (eval-if-exp (cddr lce) env))
+         ((eq? (list-ref (list-ref lce 1) 0) 'let-exp)
+          ;first element of app-exp is an let-exp
+          (eval-exp (list-ref lce 3) (extend-env-4-let (list-ref lce 2) env)))
          (else
           ;first element of app-exp is a var-exp
            (let ((theLambda (eval-exp (list-ref lce 1) env))
@@ -193,7 +202,7 @@
              (eval-exp theLambda (extend-env-4-lambda (list-ref theLambda 1)
                                                       theInputs
                                                       env)))))))))
-           
+
 
 
 (define run-program
@@ -201,10 +210,14 @@
     (eval-exp lce (empty-env))))
 
 
-(define anExp '(let ((a 5) (b 7)) (+ a b)))
-
+;(define anExp '(let ((a 5) (b 7)) (+ a (let ((c 3) (b (- b 2))) (+ b c)))))
+(define anExp '(let ((a 5) (b 7)) (+ a (let ((c 3) (b (* c 2))) (+ b c))))) ;should be 14 when working
+;(define anExp '(let ((a 5) (b 4)) (+ a b)))
 ;(define anExp '(lambda (a b) (a b)))
 
 ;Pass the above to apply-env to make sure it comes out
-(parse-exp anExp)
-;(run-program (parse-exp anExp))
+;(parse-exp anExp)
+(run-program (parse-exp anExp))
+
+
+;(map (lambda (lst) (list-ref (list-ref lst 1) 1)) val)
