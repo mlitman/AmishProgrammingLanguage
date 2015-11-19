@@ -16,6 +16,7 @@
       ((eq? (car lst) val) #t)
       (else (contains val (cdr lst))))))
 
+
 ;Functions related to the variable environment
 (define empty-env
   (lambda () '()))
@@ -62,12 +63,20 @@
      (extend-env-4-lambda-helper lovars lovals (empty-scope))
      env)))
 
+
 (define extend-env-4-let
-  (lambda (app-exp env)
-    (extend-env-4-lambda
-     (map (lambda (lst) (list-ref (list-ref lst 1) 1)) (cdr app-exp))
-     (map (lambda (exp) (eval-exp exp env)) (map (lambda (lst) (list-ref lst 2)) (cdr app-exp)))
-     env)))
+  (lambda (loexp env)
+    (if (null? loexp)
+        env
+        (extend-env-4-let (cdr loexp)
+              (extend-env-4-lambda
+               (list (cadr (car (cdr (car loexp)))))
+               (list
+                (if (eq? (caadr (cdr (car loexp))) 'lambda-exp)
+                    (cadr (cdr (car loexp)))
+                    ((eval-exp (cadr (cdr (car loexp))) env))))
+               env)))))
+
 
 ;Constructors related to the LCE types
 (define lit-exp
@@ -191,7 +200,7 @@
           (eval-if-exp (cddr lce) env))
          ((eq? (list-ref (list-ref lce 1) 0) 'let-exp)
           ;first element of app-exp is an let-exp
-          (eval-exp (list-ref lce 3) (extend-env-4-let (list-ref lce 2) env)))
+          (eval-exp (list-ref lce 3) (extend-env-4-let (cdr (list-ref lce 2)) env)))
          (else
           ;first element of app-exp is a var-exp
            (let ((theLambda (eval-exp (list-ref lce 1) env))
@@ -211,13 +220,50 @@
 
 
 ;(define anExp '(let ((a 5) (b 7)) (+ a (let ((c 3) (b (- b 2))) (+ b c)))))
-(define anExp '(let ((a 5) (b 7)) (+ a (let ((c 3) (b (* c 2))) (+ b c))))) ;should be 14 when working
+;(define anExp '(let ((a 5) (b 7)) (+ a (let ((c 3) (b (* c 2))) (+ b c))))) ;should be 14 when working
 ;(define anExp '(let ((a 5) (b 4)) (+ a b)))
-;(define anExp '(lambda (a b) (a b)))
+;(define anExp '(let ((a (lambda (x) (* x 2))) (b (lambda (x y) (+ x y)))) (b (a 5) (a 7))))
+(define anExp '(let ((fact (lambda (x) (if (== x 1) 1 (* x (fact (- x 1))))))) (fact 4))) 
+;(define anExp '((lambda (a b) (a b)) (lambda (x) (* x 2)) 5))
 
 ;Pass the above to apply-env to make sure it comes out
+
+
+;(test val (empty-env))
+
+;(list (cadr (car (cdr (car lst)))))))) list of vars
+;(cadr (cdr (car lst))) list of vals
 ;(parse-exp anExp)
-(run-program (parse-exp anExp))
+(define val (list
+   'app-exp
+   (list 'var-exp 'fact)
+   (list
+    'lambda-exp
+    (list 'x)
+    (list
+     'app-exp
+     (list 'if-exp)
+     (list
+      'app-exp
+      (list 'bool-arith-op-exp '==)
+      (list 'var-exp 'x)
+      (list 'lit-exp 1))
+     (list 'lit-exp 1)
+     (list
+      'app-exp
+      (list 'op-exp '*)
+      (list 'var-exp 'x)
+      (list
+       'app-exp
+       (list 'var-exp 'fact)
+       (list
+        'app-exp
+        (list 'op-exp '-)
+        (list 'var-exp 'x)
+        (list 'lit-exp 1))))))))
+(extend-env-4-let (list val) (empty-env))
+
+;(run-program (parse-exp anExp))
 
 
 ;(map (lambda (lst) (list-ref (list-ref lst 1) 1)) val)
